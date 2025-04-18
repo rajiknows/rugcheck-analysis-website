@@ -7,7 +7,8 @@ import {
     LiquidityEvent
 } from '../types/token';
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8787';
+// it says process is not defined, so we need to use import.meta.env
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8787';
 
 // Helper function for fetch requests
 async function fetchApi<T>(endpoint: string): Promise<T> {

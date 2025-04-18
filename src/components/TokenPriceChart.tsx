@@ -1,10 +1,10 @@
-
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { fetchPriceHistory, fetchLiquidityHistory, fetchHolderHistory } from "@/services/mockDataService";
+import { useQuery } from "@tanstack/react-query";
+import { fetchPriceHistory, fetchLiquidityHistory, fetchHolderHistory } from "@/services/apiService";
+import { PriceHistory, LiquidityHistory, HolderHistory, TimeSeriesDataPoint } from "@/types/token";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { TimeSeriesDataPoint } from "@/types/token";
 import { Loader2 } from "lucide-react";
 
 interface TokenPriceChartProps {
@@ -12,41 +12,39 @@ interface TokenPriceChartProps {
 }
 
 export default function TokenPriceChart({ mint }: TokenPriceChartProps) {
-  const [priceData, setPriceData] = useState<TimeSeriesDataPoint[]>([]);
-  const [liquidityData, setLiquidityData] = useState<TimeSeriesDataPoint[]>([]);
-  const [holderData, setHolderData] = useState<TimeSeriesDataPoint[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<string>("price");
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const price = await fetchPriceHistory(mint);
-        setPriceData(price.data);
-        
-        const liquidity = await fetchLiquidityHistory(mint);
-        setLiquidityData(liquidity.data);
-        
-        const holders = await fetchHolderHistory(mint);
-        setHolderData(holders.data);
-      } catch (error) {
-        console.error("Error fetching chart data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchData();
-  }, [mint]);
+  const { data: priceHistory, isLoading: isLoadingPrice } = useQuery<PriceHistory, Error>({
+    queryKey: ['priceHistory', mint],
+    queryFn: () => fetchPriceHistory(mint),
+    enabled: !!mint,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
 
-  // Format date for the chart tooltip
+  const { data: liquidityHistory, isLoading: isLoadingLiquidity } = useQuery<LiquidityHistory, Error>({
+    queryKey: ['liquidityHistory', mint],
+    queryFn: () => fetchLiquidityHistory(mint),
+    enabled: !!mint,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
+
+  const { data: holderHistory, isLoading: isLoadingHolders } = useQuery<HolderHistory, Error>({
+    queryKey: ['holderHistory', mint],
+    queryFn: () => fetchHolderHistory(mint),
+    enabled: !!mint,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
+
+  const isLoading = isLoadingPrice || isLoadingLiquidity || isLoadingHolders;
+
   const formatDate = (timestamp: string) => {
     const date = new Date(timestamp);
     return date.toLocaleDateString();
   };
 
-  // Format value based on the active data type
   const formatValue = (value: number) => {
     switch (activeTab) {
       case "price":
@@ -60,7 +58,6 @@ export default function TokenPriceChart({ mint }: TokenPriceChartProps) {
     }
   };
 
-  // Custom tooltip component
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
@@ -75,29 +72,27 @@ export default function TokenPriceChart({ mint }: TokenPriceChartProps) {
     return null;
   };
 
-  // Get current data based on active tab
-  const getCurrentData = () => {
+  const getCurrentData = (): TimeSeriesDataPoint[] => {
     switch (activeTab) {
       case "price":
-        return priceData;
+        return priceHistory?.data ?? [];
       case "liquidity":
-        return liquidityData;
+        return liquidityHistory?.data ?? [];
       case "holders":
-        return holderData;
+        return holderHistory?.data ?? [];
       default:
         return [];
     }
   };
 
-  // Get color based on active tab
   const getChartColor = () => {
     switch (activeTab) {
       case "price":
-        return "#60a5fa"; // chart-price
+        return "#60a5fa";
       case "liquidity":
-        return "#8b5cf6"; // chart-liquidity
+        return "#8b5cf6";
       case "holders":
-        return "#f97316"; // chart-holders
+        return "#f97316";
       default:
         return "#60a5fa";
     }
@@ -121,7 +116,7 @@ export default function TokenPriceChart({ mint }: TokenPriceChartProps) {
         </Tabs>
       </CardHeader>
       <CardContent>
-        {loading ? (
+        {isLoading ? (
           <div className="flex items-center justify-center h-64">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>

@@ -1,7 +1,7 @@
-
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { fetchTokenReport } from "@/services/mockDataService";
+import { useQuery } from "@tanstack/react-query";
+import { fetchTopHolders } from "@/services/apiService";
 import { TopHolder } from "@/types/token";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { Loader2, AlertTriangle } from "lucide-react";
@@ -11,70 +11,55 @@ interface TopHoldersChartProps {
 }
 
 export default function TopHoldersChart({ mint }: TopHoldersChartProps) {
-  const [topHolders, setTopHolders] = useState<TopHolder[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const { 
+    data: topHolders = [],
+    isLoading, 
+    isError, 
+    error 
+  } = useQuery<TopHolder[], Error>({
+    queryKey: ['topHolders', mint],
+    queryFn: () => fetchTopHolders(mint),
+    enabled: !!mint,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    retry: 1
+  });
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const report = await fetchTokenReport(mint);
-        setTopHolders(report.topHolders);
-      } catch (err) {
-        setError("Failed to load top holders data");
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [mint]);
-
-  // Prepare data for pie chart
   const prepareChartData = () => {
-    // Display top 5 holders, group the rest as "Others"
     const displayHolders = topHolders.slice(0, 5);
-    
-    // Calculate the sum of remaining holders
     const othersPercentage = topHolders
       .slice(5)
       .reduce((sum, holder) => sum + holder.pct, 0);
-    
     const chartData = displayHolders.map((holder) => ({
       name: holder.insider 
-        ? `${holder.address} (Insider)` 
-        : holder.address,
+        ? `${holder.address.substring(0,6)}... (Insider)`
+        : holder.address.substring(0,6) + '...',
       value: holder.pct,
-      insider: holder.insider
+      insider: holder.insider,
+      fullAddress: holder.address
     }));
     
-    // Add "Others" if there are more than 5 holders
     if (othersPercentage > 0) {
       chartData.push({
         name: "Others",
         value: othersPercentage,
-        insider: false
+        insider: false,
+        fullAddress: "Multiple Holders"
       });
     }
     
     return chartData;
   };
 
-  // Pie chart colors
   const COLORS = ['#3B82F6', '#8B5CF6', '#EC4899', '#F97316', '#10B981', '#6B7280'];
-  
-  // Insider highlight color
   const INSIDER_COLOR = '#EF4444';
 
-  // Custom tooltip for the pie chart
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div className="bg-card border border-border p-2 rounded-md shadow-md">
-          <p className="text-xs font-medium">{data.name}</p>
+        <div className="bg-card border border-border p-2 rounded-md shadow-md max-w-xs break-words">
+          <p className="text-xs font-medium">{data.fullAddress}</p>
           <p className="text-sm font-medium">{data.value.toFixed(2)}%</p>
           {data.insider && (
             <div className="flex items-center mt-1 text-risk-high text-xs">
@@ -88,9 +73,8 @@ export default function TopHoldersChart({ mint }: TopHoldersChartProps) {
     return null;
   };
 
-  // Render chart content
   const renderChartContent = () => {
-    if (loading) {
+    if (isLoading) {
       return (
         <div className="flex items-center justify-center h-64">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -98,16 +82,24 @@ export default function TopHoldersChart({ mint }: TopHoldersChartProps) {
       );
     }
 
-    if (error) {
+    if (isError) {
       return (
         <div className="flex flex-col items-center justify-center h-64 text-destructive">
           <AlertTriangle className="h-8 w-8 mb-2" />
-          <p>{error}</p>
+          <p>{error?.message || "Failed to load holders data"}</p>
         </div>
       );
     }
 
     const chartData = prepareChartData();
+    
+    if (chartData.length === 0) {
+       return (
+         <div className="flex items-center justify-center h-64 text-muted-foreground">
+           <p>No holder data available.</p>
+         </div>
+       );
+    }
     
     return (
       <div className="h-72">
@@ -121,7 +113,6 @@ export default function TopHoldersChart({ mint }: TopHoldersChartProps) {
               outerRadius={80}
               fill="#8884d8"
               dataKey="value"
-              label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
             >
               {chartData.map((entry, index) => (
                 <Cell 
@@ -137,7 +128,6 @@ export default function TopHoldersChart({ mint }: TopHoldersChartProps) {
     );
   };
 
-  // Check for concentration risk
   const calculateConcentrationRisk = () => {
     if (topHolders.length === 0) return null;
     
@@ -169,7 +159,7 @@ export default function TopHoldersChart({ mint }: TopHoldersChartProps) {
       </CardHeader>
       <CardContent>
         {renderChartContent()}
-        {!loading && !error && calculateConcentrationRisk()}
+        {!isLoading && !isError && calculateConcentrationRisk()}
       </CardContent>
     </Card>
   );

@@ -129,7 +129,10 @@ export default function TokenDetail() {
           </TabsContent>
           
           <TabsContent value="community" className="space-y-6">
-            <TokenVotesChart mint={token.mint} />
+            <TokenVotesChart 
+              upvotes={token.upvotes ?? 0} 
+              downvotes={token.downvotes ?? 0}
+            />
             {/* Additional community analysis components would go here */}
           </TabsContent>
         </Tabs>

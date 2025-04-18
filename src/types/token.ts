@@ -1,4 +1,3 @@
-
 export interface TokenReport {
   mint: string;
   detectedAt: string;
@@ -144,4 +143,6 @@ export interface TokenSummary {
   score_normalised: number;
   riskLevel: RiskLevel;
   lastUpdated: string;
+  upvotes?: number | null;
+  downvotes?: number | null;
 }

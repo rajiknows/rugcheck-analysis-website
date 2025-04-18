@@ -1,8 +1,8 @@
-
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { fetchTokenReport } from "@/services/mockDataService";
-import { Market, Locker } from "@/types/token";
+import { useQuery } from "@tanstack/react-query";
+import { fetchLiquidityLockInfo } from "@/services/apiService";
+import { LiquidityEvent } from "@/types/token";
 import { Loader2, AlertTriangle, LockIcon, UnlockIcon } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
@@ -11,37 +11,28 @@ interface TokenLiquidityInfoProps {
 }
 
 export default function TokenLiquidityInfo({ mint }: TokenLiquidityInfoProps) {
-  const [markets, setMarkets] = useState<Market[]>([]);
-  const [lockers, setLockers] = useState<Record<string, Locker>>({});
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const { 
+    data: liquidityEvents = [],
+    isLoading, 
+    isError, 
+    error 
+  } = useQuery<LiquidityEvent[], Error>({
+    queryKey: ['liquidityLockInfo', mint],
+    queryFn: () => fetchLiquidityLockInfo(mint),
+    enabled: !!mint,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    retry: 1
+  });
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const report = await fetchTokenReport(mint);
-        setMarkets(report.markets);
-        setLockers(report.lockers);
-      } catch (err) {
-        setError("Failed to load liquidity data");
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [mint]);
-
-  // Format date
-  const formatUnlockDate = (timestamp: number) => {
+  const formatUnlockDate = (timestamp: number | null) => {
+    if (timestamp === null) return "N/A";
     const date = new Date(timestamp * 1000);
     return date.toLocaleDateString();
   };
 
-  // Calculate days until unlock
-  const getDaysUntilUnlock = (timestamp: number) => {
+  const getDaysUntilUnlock = (timestamp: number | null) => {
+    if (timestamp === null) return Infinity;
     const now = new Date();
     const unlockDate = new Date(timestamp * 1000);
     const diffTime = unlockDate.getTime() - now.getTime();
@@ -49,19 +40,20 @@ export default function TokenLiquidityInfo({ mint }: TokenLiquidityInfoProps) {
     return diffDays;
   };
 
-  // Get color based on lock percentage
-  const getLockColor = (percentage: number) => {
+  const getLockColor = (percentage: number | null) => {
+    if (percentage === null) return "bg-gray-400";
     if (percentage >= 80) return "bg-risk-low";
     if (percentage >= 50) return "bg-risk-medium";
     if (percentage >= 20) return "bg-risk-high";
     return "bg-risk-critical";
   };
 
-  // Check for liquidity lock risk
   const calculateLiquidityRisk = () => {
-    if (markets.length === 0) return null;
+    if (liquidityEvents.length === 0) return null;
     
-    const avgLockPercentage = markets.reduce((sum, market) => sum + market.lp.lpLockedPct, 0) / markets.length;
+    const validPercentages = liquidityEvents.map(e => e.lpLockedPct).filter(p => p !== null) as number[];
+    if (validPercentages.length === 0) return null;
+    const avgLockPercentage = validPercentages.reduce((sum, pct) => sum + pct, 0) / validPercentages.length;
     
     if (avgLockPercentage < 50) {
       return (
@@ -80,13 +72,12 @@ export default function TokenLiquidityInfo({ mint }: TokenLiquidityInfoProps) {
     return null;
   };
 
-  // Check for upcoming unlocks
   const checkUpcomingUnlocks = () => {
-    const lockerEntries = Object.entries(lockers);
-    if (lockerEntries.length === 0) return null;
+    if (liquidityEvents.length === 0) return null;
     
-    const upcomingUnlocks = lockerEntries.filter(([_, locker]) => {
-      const daysToUnlock = getDaysUntilUnlock(locker.unlockDate);
+    const upcomingUnlocks = liquidityEvents.filter(event => {
+      if (event.unlockDate === null) return false;
+      const daysToUnlock = getDaysUntilUnlock(event.unlockDate);
       return daysToUnlock >= 0 && daysToUnlock <= 7;
     });
     
@@ -107,9 +98,8 @@ export default function TokenLiquidityInfo({ mint }: TokenLiquidityInfoProps) {
     return null;
   };
 
-  // Render content
   const renderContent = () => {
-    if (loading) {
+    if (isLoading) {
       return (
         <div className="flex items-center justify-center h-64">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -117,58 +107,56 @@ export default function TokenLiquidityInfo({ mint }: TokenLiquidityInfoProps) {
       );
     }
 
-    if (error) {
+    if (isError) {
       return (
         <div className="flex flex-col items-center justify-center h-64 text-destructive">
           <AlertTriangle className="h-8 w-8 mb-2" />
-          <p>{error}</p>
+          <p>{error?.message || "Failed to load liquidity data"}</p>
         </div>
       );
     }
 
+    if (liquidityEvents.length === 0) {
+        return (
+           <div className="flex items-center justify-center h-64 text-muted-foreground">
+               <p>No liquidity lock information available.</p>
+           </div>
+        );
+    }
+
     return (
       <div>
-        <h3 className="font-medium mb-3">LP Tokens</h3>
-        {markets.length > 0 ? (
-          <div className="space-y-4">
-            {markets.map((market, index) => (
+        <div className="space-y-4">
+          {liquidityEvents.map((event, index) => {
+            const daysToUnlock = getDaysUntilUnlock(event.unlockDate);
+            const isUnlocked = event.unlockDate === null ? false : daysToUnlock < 0;
+            
+            return (
               <div key={index} className="bg-muted p-3 rounded-md">
-                <div className="flex justify-between items-center mb-2">
-                  <div className="text-sm font-medium">Market: {market.pubkey}</div>
-                  <div className="text-xs text-muted-foreground">
-                    Locked: ${market.lp.lpLocked.toLocaleString()}
-                  </div>
+                <div className="text-xs text-muted-foreground mb-2">
+                    Market: {event.market_pubkey}
                 </div>
-                <div className="space-y-2">
+                
+                <div className="mb-2 space-y-1">
                   <div className="flex justify-between text-xs">
-                    <span>Lock Percentage</span>
-                    <span>{market.lp.lpLockedPct.toFixed(2)}%</span>
+                    <span>LP Lock Percentage</span>
+                    <span>{event.lpLockedPct !== null ? `${event.lpLockedPct.toFixed(2)}%` : 'N/A'}</span>
                   </div>
                   <Progress 
-                    value={market.lp.lpLockedPct} 
-                    className={getLockColor(market.lp.lpLockedPct)} 
+                    value={event.lpLockedPct ?? 0}
+                    className={getLockColor(event.lpLockedPct)} 
                   />
                 </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-muted-foreground text-sm">No market liquidity data available</p>
-        )}
 
-        <h3 className="font-medium mt-6 mb-3">Liquidity Locks</h3>
-        {Object.keys(lockers).length > 0 ? (
-          <div className="space-y-4">
-            {Object.entries(lockers).map(([id, locker]) => {
-              const daysToUnlock = getDaysUntilUnlock(locker.unlockDate);
-              const isUnlocked = daysToUnlock < 0;
-              
-              return (
-                <div key={id} className="bg-muted p-3 rounded-md">
-                  <div className="flex justify-between items-start">
+                <div className="flex justify-between items-start mt-2">
                     <div>
                       <div className="text-sm font-medium mb-1">
-                        {isUnlocked ? (
+                        {event.unlockDate === null ? (
+                           <div className="flex items-center">
+                             <LockIcon className="h-4 w-4 mr-1 text-risk-low" />
+                             <span>Permanently Locked (?)</span>
+                           </div>
+                        ) : isUnlocked ? (
                           <div className="flex items-center">
                             <UnlockIcon className="h-4 w-4 mr-1 text-risk-high" />
                             <span>Unlocked</span>
@@ -181,30 +169,29 @@ export default function TokenLiquidityInfo({ mint }: TokenLiquidityInfoProps) {
                         )}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        USDC Value: ${locker.usdcLocked.toLocaleString()}
+                        USDC Locked: {event.usdcLocked !== null ? `$${event.usdcLocked.toLocaleString()}` : 'N/A'}
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-xs font-medium">
-                        {isUnlocked ? "Unlocked on:" : "Unlocks on:"}
-                      </div>
-                      <div className="text-sm">
-                        {formatUnlockDate(locker.unlockDate)}
-                      </div>
-                      {!isUnlocked && (
-                        <div className={`text-xs mt-1 ${daysToUnlock <= 7 ? 'text-risk-high' : 'text-muted-foreground'}`}>
-                          {daysToUnlock} days remaining
+                    {event.unlockDate !== null && (
+                        <div className="text-right">
+                          <div className="text-xs font-medium">
+                            {isUnlocked ? "Unlocked on:" : "Unlocks on:"}
+                          </div>
+                          <div className="text-sm">
+                            {formatUnlockDate(event.unlockDate)}
+                          </div>
+                          {!isUnlocked && (
+                            <div className={`text-xs mt-1 ${daysToUnlock <= 7 ? 'text-risk-high' : 'text-muted-foreground'}`}>
+                              {daysToUnlock} days remaining
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <p className="text-muted-foreground text-sm">No liquidity lock data available</p>
-        )}
+                    )}
+                 </div>
+              </div>
+            );
+          })}
+        </div>
 
         {calculateLiquidityRisk()}
         {checkUpcomingUnlocks()}
@@ -215,7 +202,7 @@ export default function TokenLiquidityInfo({ mint }: TokenLiquidityInfoProps) {
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle className="text-lg">Liquidity Information</CardTitle>
+        <CardTitle className="text-lg">Liquidity Lock Information</CardTitle>
       </CardHeader>
       <CardContent>
         {renderContent()}
