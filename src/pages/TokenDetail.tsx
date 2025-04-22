@@ -20,7 +20,13 @@ export default function TokenDetail() {
     const navigate = useNavigate();
 
     // Use our new hook instead of direct useQuery
-    const { data: token, isLoading, isError, error } = useTokenSummary(mint!);
+    const {
+        data: tokenSummaryResponse,
+        isLoading,
+        isError,
+        error,
+    } = useTokenSummary(mint!);
+    const token = tokenSummaryResponse; // Access the nested 'data' property
 
     console.log(
         `[TokenDetail] useQuery state: isLoading=${isLoading}, isError=${isError}, hasData=${!!token}`,
@@ -31,10 +37,7 @@ export default function TokenDetail() {
     };
 
     const shareToken = () => {
-        // Type narrowing should happen before this is called in the success case
         if (token) {
-            // Since the backend may not provide name/symbol properties based on API review,
-            // we should only use the mint address for sharing
             alert(`Sharing token analysis for ${mint}`);
         } else {
             console.warn(
@@ -55,7 +58,6 @@ export default function TokenDetail() {
         );
     }
 
-    // Handle React Query hook error
     if (isError) {
         console.error("[TokenDetail] React Query Error:", error);
         return (
@@ -78,7 +80,6 @@ export default function TokenDetail() {
         );
     }
 
-    // Handle case where query succeeds but data is missing
     if (!token) {
         console.error(
             "[TokenDetail] Query successful but token data is missing.",
@@ -102,7 +103,6 @@ export default function TokenDetail() {
         );
     }
 
-    // If we reach here, token MUST be of type TokenSummary
     console.log(
         "[TokenDetail] Rendering success state. Token data:",
         JSON.stringify(token, null, 2),
@@ -118,12 +118,9 @@ export default function TokenDetail() {
                 <div className="flex gap-2">
                     <CreateAlertDialog
                         mint={mint!}
-                        // Remove properties that aren't in our backend response
-                        // Based on API collection review, we don't see symbol, name, or price
-                        // directly in the token summary
                         tokenSymbol=""
                         tokenName=""
-                        currentPrice={token.score} // Use score instead as a fallback
+                        currentPrice={token.score}
                     />
                     <Button variant="outline" size="sm" onClick={shareToken}>
                         <Share2 className="mr-2 h-4 w-4" />
@@ -171,8 +168,6 @@ export default function TokenDetail() {
 
                     <TabsContent value="community" className="space-y-6">
                         <TokenVotesChart
-                            // The API likely returns these values differently based on Postman collection
-                            // Use ?? 0 to provide defaults when these properties don't exist
                             upvotes={token.upvotes ?? 0}
                             downvotes={token.downvotes ?? 0}
                         />

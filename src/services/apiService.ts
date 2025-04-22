@@ -167,8 +167,17 @@ export const useTokenSummary = (mint: string) => {
 export const usePriceHistory = (mint: string) => {
     return useQuery({
         queryKey: queryKeys.priceHistory(mint),
-        queryFn: () =>
-            fetchApi<PriceHistory>(`/tokens/${mint}/visualizations/price`),
+        queryFn: async () => {
+            const response = await fetchApi<{
+                data: { timestamp: string; price: number | null }[];
+            }>(`/tokens/${mint}/visualizations/price`);
+            return {
+                data: response.data.map((item) => ({
+                    timestamp: item.timestamp,
+                    value: item.price === null ? 0 : item.price, // Handle null price, adjust as needed (e.g., skip or use a default)
+                })),
+            };
+        },
         enabled: !!mint,
     });
 };
@@ -183,36 +192,67 @@ export const useLiquidityHistory = (mint: string) => {
         enabled: !!mint,
     });
 };
-
 export const useHolderHistory = (mint: string) => {
     return useQuery({
         queryKey: queryKeys.holderHistory(mint),
-        queryFn: () =>
-            fetchApi<HolderHistory>(`/tokens/${mint}/visualizations/holders`),
-        enabled: !!mint,
-    });
-};
-
-export const useTopHolders = (mint: string) => {
-    return useQuery({
-        queryKey: queryKeys.topHolders(mint),
         queryFn: async () => {
-            const response = await fetchApi<TopHoldersResponse>(
-                `/tokens/${mint}/visualizations/top-holders`,
-            );
-            return response.data;
+            const response = await fetchApi<{
+                data: { timestamp: string; totalHolders: string }[];
+            }>(`/tokens/${mint}/visualizations/holders`);
+            return {
+                data: response.data.map((item) => ({
+                    timestamp: item.timestamp,
+                    value: parseInt(item.totalHolders, 10),
+                })),
+            };
         },
         enabled: !!mint,
     });
 };
-
+export const useTopHolders = (mint: string) => {
+    return useQuery({
+        queryKey: queryKeys.topHolders(mint),
+        queryFn: async () => {
+            try {
+                const response = await fetchApi<{
+                    data?: {
+                        address: string;
+                        amount: string;
+                        pct: number;
+                        insider: boolean;
+                    }[];
+                }>(`/tokens/${mint}/visualizations/top-holders`);
+                return response?.data || []; // Use optional chaining and a default empty array
+            } catch (error) {
+                console.error("Failed to fetch top holders:", error);
+                return []; // Return an empty array on error to prevent the .map() issue
+            }
+        },
+        enabled: !!mint,
+    });
+};
 export const useLiquidityLockInfo = (mint: string) => {
     return useQuery({
         queryKey: queryKeys.liquidityLock(mint),
-        queryFn: () =>
-            fetchApi<LiquidityLockInfo>(
-                `/tokens/${mint}/visualizations/liquidity-lock`,
-            ),
+        queryFn: async () => {
+            const response = await fetchApi<{
+                timestamp: string;
+                market_pubkey: string;
+                lpLocked: string;
+                lpLockedPct: number;
+                usdcLocked: number;
+                unlockDate: string;
+            }>(`/tokens/${mint}/visualizations/liquidity-lock`);
+            return {
+                timestamp: response.timestamp,
+                market_pubkey: response.market_pubkey,
+                lockedAmount: parseInt(response.lpLocked, 10),
+                lplocked_pct: response.lpLockedPct,
+                usdc_locked: response.usdcLocked,
+                unlockDate:
+                    response.unlockDate === "0" ? null : response.unlockDate,
+            };
+        },
         enabled: !!mint,
     });
 };
