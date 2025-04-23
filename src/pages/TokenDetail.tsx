@@ -136,7 +136,7 @@ export default function TokenDetail() {
             </div>
 
             <div className="mb-8">
-                <TokenMetricsCard token={token} />
+                <TokenMetricsCard mint={mint} />
             </div>
 
             <div>

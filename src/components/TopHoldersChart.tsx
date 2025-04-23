@@ -112,8 +112,8 @@ export default function TopHoldersChart({ mint }: TopHoldersChartProps) {
 
         if (chartData.length === 0) {
             const message =
-                Array.isArray(topHoldersResponse?.data) &&
-                topHoldersResponse.data.length === 0
+                Array.isArray(topHoldersResponse) &&
+                topHoldersResponse.length === 0
                     ? "This token currently has no holders."
                     : "Holder data not available or is empty.";
             return (
@@ -159,7 +159,7 @@ export default function TopHoldersChart({ mint }: TopHoldersChartProps) {
     };
 
     const calculateConcentrationRisk = () => {
-        const topHolders = topHoldersResponse?.data;
+        const topHolders = topHoldersResponse;
 
         if (!Array.isArray(topHolders) || topHolders.length < 3) return null;
 

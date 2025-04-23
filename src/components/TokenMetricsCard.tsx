@@ -1,21 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-    Coins,
-    Users,
-    DollarSign,
-    TrendingUp,
-    Loader2,
-    AlertTriangle,
-} from "lucide-react";
+import { Coins, TrendingUp, Loader2, AlertTriangle } from "lucide-react";
 import { useTokenSummary } from "@/services/apiService";
-import { TokenSummary } from "@/types/token"; // Ensure this import is correct
+import { TokenSummary } from "@/types/token";
 import TokenRiskScore from "./TokenRiskScore";
 
-interface TokenMetricsCardProps {
-    mint: string;
-}
-
-export default function TokenMetricsCard({ mint }: TokenMetricsCardProps) {
+export default function TokenMetricsCard({ mint }: { mint: string }) {
     const {
         data: tokenSummary,
         isLoading,
@@ -23,30 +12,23 @@ export default function TokenMetricsCard({ mint }: TokenMetricsCardProps) {
         error,
     } = useTokenSummary(mint);
 
-    // --- Helper Functions ---
     const formatNumber = (num: number | undefined | null): string => {
         if (num === undefined || num === null) return "N/A";
-        if (Math.abs(num) >= 1_000_000_000) {
+        if (Math.abs(num) >= 1_000_000_000)
             return `$${(num / 1_000_000_000).toFixed(2)}B`;
-        } else if (Math.abs(num) >= 1_000_000) {
+        if (Math.abs(num) >= 1_000_000)
             return `$${(num / 1_000_000).toFixed(2)}M`;
-        } else if (Math.abs(num) >= 1_000) {
-            return `$${(num / 1_000).toFixed(2)}K`;
-        } else {
-            return `$${num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-        }
+        if (Math.abs(num) >= 1_000) return `$${(num / 1_000).toFixed(2)}K`;
+        return `$${num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     };
 
     const formatPrice = (price: number | undefined | null): string => {
         if (price === undefined || price === null) return "N/A";
         if (price === 0) return "$0.00";
-        if (Math.abs(price) < 0.000001) {
-            return `$${price.toExponential(2)}`;
-        } else if (Math.abs(price) < 0.01) {
+        if (Math.abs(price) < 0.000001) return `$${price.toExponential(2)}`;
+        if (Math.abs(price) < 0.01)
             return `$${price.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 8 })}`;
-        } else {
-            return `$${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
-        }
+        return `$${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
     };
 
     const formatInteger = (num: number | undefined | null): string => {
@@ -54,7 +36,6 @@ export default function TokenMetricsCard({ mint }: TokenMetricsCardProps) {
         return num.toLocaleString();
     };
 
-    // --- Loading and Error States ---
     if (isLoading) {
         return (
             <Card className="w-full h-80 flex items-center justify-center">
@@ -80,7 +61,6 @@ export default function TokenMetricsCard({ mint }: TokenMetricsCardProps) {
         );
     }
 
-    // --- Render Component with Available Data ---
     return (
         <Card className="w-full shadow-lg">
             <CardHeader className="flex flex-row items-start justify-between space-x-4 pb-4">
@@ -88,8 +68,7 @@ export default function TokenMetricsCard({ mint }: TokenMetricsCardProps) {
                     <Coins className="h-6 w-6 text-primary flex-shrink-0" />
                     <div>
                         <CardTitle className="text-xl font-bold">
-                            {tokenSummary.token_program}{" "}
-                            {/* Display token program ID as name */}
+                            {tokenSummary.token_program}
                         </CardTitle>
                         <p className="text-sm text-muted-foreground">
                             {tokenSummary.token_type || "Unknown Type"}
@@ -98,19 +77,14 @@ export default function TokenMetricsCard({ mint }: TokenMetricsCardProps) {
                 </div>
                 {tokenSummary.risks && tokenSummary.risks.length > 0 && (
                     <TokenRiskScore
-                        risks={tokenSummary.risks}
-                        score={tokenSummary.score_normalised}
+                        riskLevel={tokenSummary.risks[0]}
+                        showDetails
                     />
                 )}
             </CardHeader>
+
             <CardContent>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 mb-6">
-                    {/* Price - Not available in TokenSummary, might need a separate hook */}
-                    {/* Market Cap - Not available in TokenSummary */}
-                    {/* Total Liquidity - Not available in TokenSummary */}
-                    {/* Holders - Not available in TokenSummary */}
-
-                    {/* Display Score */}
                     {typeof tokenSummary?.score !== "undefined" &&
                         tokenSummary?.score !== null && (
                             <div className="space-y-1 p-3 bg-muted/50 rounded-md">
@@ -130,7 +104,6 @@ export default function TokenMetricsCard({ mint }: TokenMetricsCardProps) {
                             </div>
                         )}
 
-                    {/* Display Upvotes */}
                     {typeof tokenSummary?.upvotes !== "undefined" &&
                         tokenSummary?.upvotes !== null && (
                             <div className="space-y-1 p-3 bg-muted/50 rounded-md">
@@ -144,7 +117,6 @@ export default function TokenMetricsCard({ mint }: TokenMetricsCardProps) {
                             </div>
                         )}
 
-                    {/* Display Downvotes */}
                     {typeof tokenSummary?.downvotes !== "undefined" &&
                         tokenSummary?.downvotes !== null && (
                             <div className="space-y-1 p-3 bg-muted/50 rounded-md">
@@ -158,7 +130,6 @@ export default function TokenMetricsCard({ mint }: TokenMetricsCardProps) {
                             </div>
                         )}
 
-                    {/* Placeholder if no relevant metrics are in TokenSummary */}
                     {typeof tokenSummary?.score === "undefined" &&
                         typeof tokenSummary?.upvotes === "undefined" &&
                         typeof tokenSummary?.downvotes === "undefined" && (
@@ -169,17 +140,18 @@ export default function TokenMetricsCard({ mint }: TokenMetricsCardProps) {
                         )}
                 </div>
 
-                {/* Conditionally render Risk Analysis Section */}
                 {tokenSummary?.risks && tokenSummary.risks.length > 0 && (
                     <div className="mt-4 pt-4 border-t border-border">
                         <h3 className="text-base font-semibold mb-3">
                             Risk Analysis
                         </h3>
-                        <TokenRiskScore
-                            risks={tokenSummary.risks}
-                            score={tokenSummary.score_normalised}
-                            showDetails={true}
-                        />
+                        {tokenSummary.risks.map((risk, idx) => (
+                            <TokenRiskScore
+                                key={idx}
+                                riskLevel={risk}
+                                showDetails
+                            />
+                        ))}
                     </div>
                 )}
             </CardContent>

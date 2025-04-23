@@ -78,7 +78,6 @@ interface HolderHistoryResponse {
 const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL || "http://localhost:8787";
 
-// API client helper
 interface FetchOptions extends RequestInit {
     body?: any;
 }
