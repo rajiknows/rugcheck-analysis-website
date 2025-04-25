@@ -71,7 +71,7 @@ export default function TokenMetricsCard({ mint }: { mint: string }) {
                             {tokenSummary.token_program}
                         </CardTitle>
                         <p className="text-sm text-muted-foreground">
-                            {tokenSummary.token_type || "Unknown Type"}
+                            {tokenSummary.token_type || "Unknown Token Type"}
                         </p>
                     </div>
                 </div>

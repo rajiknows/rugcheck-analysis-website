@@ -6,6 +6,7 @@ import {
     HolderHistory,
     TopHolder,
 } from "../types/token";
+import { ArrowUpCircleIcon } from "lucide-react";
 
 // --- Alert and API Response Types ---
 export type AlertComparison = "GREATER_THAN" | "LESS_THAN" | "EQUALS";
@@ -161,20 +162,27 @@ export const useTokenSummary = (mint: string) => {
         enabled: !!mint,
     });
 };
-
-// --- Token Visualizations ---
 export const usePriceHistory = (mint: string) => {
     return useQuery({
         queryKey: queryKeys.priceHistory(mint),
         queryFn: async () => {
-            const response = await fetchApi<{
-                data: { timestamp: string; price: number | null }[];
-            }>(`/tokens/${mint}/visualizations/price`);
-            return {
-                data: response.data.map((item) => ({
+            type ApiPriceHistoryItem = {
+                timestamp: string;
+                price: number | null;
+            };
+            const response = await fetchApi<ApiPriceHistoryItem[]>( // <<< Correct: Expect an array
+                `/tokens/${mint}/visualizations/price`,
+            );
+
+            const processedData = response
+                .filter((item) => item.price !== null)
+                .map((item) => ({
                     timestamp: item.timestamp,
-                    value: item.price === null ? 0 : item.price, // Handle null price, adjust as needed (e.g., skip or use a default)
-                })),
+                    value: item.price as number, // Assert as number since nulls are filtered
+                }));
+
+            return {
+                data: processedData,
             };
         },
         enabled: !!mint,
@@ -184,10 +192,26 @@ export const usePriceHistory = (mint: string) => {
 export const useLiquidityHistory = (mint: string) => {
     return useQuery({
         queryKey: queryKeys.liquidityHistory(mint),
-        queryFn: () =>
-            fetchApi<LiquidityHistory>(
+        queryFn: async () => {
+            type apiLiquidityHistory = {
+                timestamp: string;
+                totalMarketLiquidity: number;
+            };
+            const response = await fetchApi<apiLiquidityHistory[]>( // <<< Correct: Expect an array
                 `/tokens/${mint}/visualizations/liquidity`,
-            ),
+            );
+
+            const processedData = response
+                .filter((item) => item.totalMarketLiquidity !== null)
+                .map((item) => ({
+                    timestamp: item.timestamp,
+                    value: item.totalMarketLiquidity as number, // Assert as number since nulls are filtered
+                }));
+
+            return {
+                data: processedData,
+            };
+        },
         enabled: !!mint,
     });
 };
@@ -195,14 +219,19 @@ export const useHolderHistory = (mint: string) => {
     return useQuery({
         queryKey: queryKeys.holderHistory(mint),
         queryFn: async () => {
-            const response = await fetchApi<{
-                data: { timestamp: string; totalHolders: string }[];
-            }>(`/tokens/${mint}/visualizations/holders`);
+            type apiHolderHistory = {
+                timestamp: string;
+                totalHolders: string;
+            };
+            const response = await fetchApi<apiHolderHistory[]>(
+                `/tokens/${mint}/visualizations/holders`,
+            );
+            const processedData = response.map((item) => ({
+                timestamp: item.timestamp,
+                value: parseInt(item.totalHolders, 10),
+            }));
             return {
-                data: response.data.map((item) => ({
-                    timestamp: item.timestamp,
-                    value: parseInt(item.totalHolders, 10),
-                })),
+                data: processedData,
             };
         },
         enabled: !!mint,
@@ -212,19 +241,20 @@ export const useTopHolders = (mint: string) => {
     return useQuery({
         queryKey: queryKeys.topHolders(mint),
         queryFn: async () => {
+            type apiTopHolders = {
+                address: string;
+                amount: string;
+                pct: number;
+                insider: boolean;
+            };
             try {
-                const response = await fetchApi<{
-                    data?: {
-                        address: string;
-                        amount: string;
-                        pct: number;
-                        insider: boolean;
-                    }[];
-                }>(`/tokens/${mint}/visualizations/top-holders`);
-                return response?.data || []; // Use optional chaining and a default empty array
+                const response = await fetchApi<apiTopHolders[]>(
+                    `/tokens/${mint}/visualizations/top-holders`,
+                );
+                return response || [];
             } catch (error) {
                 console.error("Failed to fetch top holders:", error);
-                return []; // Return an empty array on error to prevent the .map() issue
+                return [];
             }
         },
         enabled: !!mint,
@@ -256,7 +286,6 @@ export const useLiquidityLockInfo = (mint: string) => {
     });
 };
 
-// --- Alerts ---
 export const useAlerts = () => {
     return useQuery({
         queryKey: queryKeys.alerts,

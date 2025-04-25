@@ -32,6 +32,7 @@ export default function TokenPriceChart({ mint }: TokenPriceChartProps) {
 
     const { data: priceHistoryResponse, isLoading: isLoadingPrice } =
         usePriceHistory(mint);
+    // console.log(priceHistoryResponse.data);
     const { data: liquidityHistoryResponse, isLoading: isLoadingLiquidity } =
         useLiquidityHistory(mint);
     const { data: holderHistoryResponse, isLoading: isLoadingHolders } =

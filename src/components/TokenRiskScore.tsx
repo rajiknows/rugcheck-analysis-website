@@ -22,7 +22,7 @@ export default function TokenRiskScore({
                 return "bg-risk-medium";
             case "high":
                 return "bg-risk-high";
-            case "critical":
+            case "warn":
                 return "bg-risk-critical animate-pulse-warning";
             default:
                 return "bg-muted";
@@ -35,7 +35,7 @@ export default function TokenRiskScore({
             case "medium":
                 return "text-black";
             case "high":
-            case "critical":
+            case "warn":
                 return "text-white";
             default:
                 return "text-foreground";
@@ -50,7 +50,7 @@ export default function TokenRiskScore({
                 return "Medium Risk";
             case "high":
                 return "High Risk";
-            case "critical":
+            case "warn":
                 return "Critical Risk";
             default:
                 return "Unknown Risk";
@@ -70,7 +70,7 @@ export default function TokenRiskScore({
                     {getLabel()}
                 </div>
                 <span className="text-sm text-muted-foreground">
-                    Score: {score}/100
+                    Score: {score}
                 </span>
             </div>
 
