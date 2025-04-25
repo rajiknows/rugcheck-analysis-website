@@ -59,23 +59,6 @@ export interface LiquidityLockInfo {
     unlockDate: string | null;
 }
 
-interface TopHoldersResponse {
-    data: TopHolder[];
-}
-
-interface PriceHistoryResponse {
-    data: PriceHistory["data"];
-}
-
-interface LiquidityHistoryResponse {
-    data: LiquidityHistory["data"];
-}
-
-interface HolderHistoryResponse {
-    data: HolderHistory["data"];
-}
-
-// Constants
 const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL || "http://localhost:8787";
 
@@ -141,7 +124,7 @@ async function fetchApi<T>(
     }
 }
 
-// Query key factory
+// Factory of queries
 export const queryKeys = {
     tokenSummary: (mint: string) => ["token", mint, "summary"],
     priceHistory: (mint: string) => ["token", mint, "price"],
@@ -154,7 +137,6 @@ export const queryKeys = {
     alertsByMint: (mint: string) => ["alerts", "mint", mint],
 };
 
-// --- Token Summary ---
 export const useTokenSummary = (mint: string) => {
     return useQuery({
         queryKey: queryKeys.tokenSummary(mint),
@@ -170,7 +152,7 @@ export const usePriceHistory = (mint: string) => {
                 timestamp: string;
                 price: number | null;
             };
-            const response = await fetchApi<ApiPriceHistoryItem[]>( // <<< Correct: Expect an array
+            const response = await fetchApi<ApiPriceHistoryItem[]>(
                 `/tokens/${mint}/visualizations/price`,
             );
 
@@ -178,7 +160,7 @@ export const usePriceHistory = (mint: string) => {
                 .filter((item) => item.price !== null)
                 .map((item) => ({
                     timestamp: item.timestamp,
-                    value: item.price as number, // Assert as number since nulls are filtered
+                    value: item.price as number,
                 }));
 
             return {
@@ -197,7 +179,7 @@ export const useLiquidityHistory = (mint: string) => {
                 timestamp: string;
                 totalMarketLiquidity: number;
             };
-            const response = await fetchApi<apiLiquidityHistory[]>( // <<< Correct: Expect an array
+            const response = await fetchApi<apiLiquidityHistory[]>(
                 `/tokens/${mint}/visualizations/liquidity`,
             );
 
@@ -205,7 +187,7 @@ export const useLiquidityHistory = (mint: string) => {
                 .filter((item) => item.totalMarketLiquidity !== null)
                 .map((item) => ({
                     timestamp: item.timestamp,
-                    value: item.totalMarketLiquidity as number, // Assert as number since nulls are filtered
+                    value: item.totalMarketLiquidity as number,
                 }));
 
             return {

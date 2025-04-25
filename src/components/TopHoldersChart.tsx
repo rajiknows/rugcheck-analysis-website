@@ -10,15 +10,14 @@ interface TopHoldersChartProps {
 
 export default function TopHoldersChart({ mint }: TopHoldersChartProps) {
     const {
-        data: topHoldersResponse, // Renamed to be explicit about the response
+        data: topHoldersResponse,
         isLoading,
         isError,
         error,
     } = useTopHolders(mint);
 
-    // Prepare chart data based on the nested 'data' property
     const prepareChartData = () => {
-        const topHolders = topHoldersResponse; // Access the 'data' array
+        const topHolders = topHoldersResponse;
 
         if (!Array.isArray(topHolders)) {
             console.warn("topHolders data is not an array:", topHolders);

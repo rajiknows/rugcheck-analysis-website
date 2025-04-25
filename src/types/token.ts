@@ -131,7 +131,7 @@ export interface RiskLevel {
 }
 
 export interface TokenSummary {
-    token_program: string; // token id
+    token_program: string;
     token_type: string;
     risks: RiskLevel[];
     score: number;

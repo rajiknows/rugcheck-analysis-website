@@ -34,7 +34,7 @@ interface CreateAlertDialogProps {
     mint: string;
 }
 
-const MOCK_USER_EMAIL = "user@example.com";
+// const MOCK_USER_EMAIL = "user@example.com";
 
 export default function CreateAlertDialog({
     tokenSymbol,
