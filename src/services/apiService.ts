@@ -8,7 +8,6 @@ import {
 } from "../types/token";
 import { ArrowUpCircleIcon } from "lucide-react";
 
-// --- Alert and API Response Types ---
 export type AlertComparison = "GREATER_THAN" | "LESS_THAN" | "EQUALS";
 
 export interface Alert {
@@ -328,7 +327,6 @@ export const useDeleteAlert = () => {
                 body: payload,
             }),
         onSuccess: () => {
-            // Invalidate all alert-related queries
             queryClient.invalidateQueries({ queryKey: ["alerts"] });
         },
     });
@@ -344,7 +342,6 @@ export const useUpdateAlert = () => {
                 body: payload,
             }),
         onSuccess: () => {
-            // Invalidate all alert-related queries
             queryClient.invalidateQueries({ queryKey: ["alerts"] });
         },
     });
