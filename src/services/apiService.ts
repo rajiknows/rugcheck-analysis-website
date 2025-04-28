@@ -60,7 +60,7 @@ export interface LiquidityLockInfo {
 
 const API_BASE_URL =
     import.meta.env.BACKEND_URL ||
-    "https://rugcheck-backend.rajeshhjhamain-dd8.workers.dev/";
+    "https://rugcheck-backend.rajeshhjhamain-dd8.workers.dev";
 
 interface FetchOptions extends RequestInit {
     body?: any;
